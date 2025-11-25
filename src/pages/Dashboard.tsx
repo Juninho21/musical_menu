@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../lib/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { collection, getDocs, addDoc, query, where, doc, updateDoc, increment, deleteDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, getDocs, addDoc, query, where, doc, updateDoc, increment, deleteDoc, arrayUnion } from 'firebase/firestore';
 import { Plus, Music, ListMusic, Settings, LogOut, QrCode, ArrowRight, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
 
 export default function Dashboard() {
     const [user, setUser] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
+    // const [loading, setLoading] = useState(true); // Removed unused loading state
     const [activeTab, setActiveTab] = useState('playlists');
     const [playlists, setPlaylists] = useState<any[]>([]);
     const [showNewPlaylistModal, setShowNewPlaylistModal] = useState(false);
@@ -30,7 +30,7 @@ export default function Dashboard() {
                 setUser(currentUser);
                 fetchPlaylists(currentUser.uid);
             }
-            setLoading(false);
+            // setLoading(false);
         });
         return () => unsubscribe();
     }, [navigate]);
@@ -186,10 +186,10 @@ export default function Dashboard() {
 
     // Missing state variables
     const [playlistSongs, setPlaylistSongs] = useState<any[]>([]);
-    const [requests, setRequests] = useState<any[]>([]);
+    const [requests] = useState<any[]>([]);
     const [pixKey, setPixKey] = useState('');
     const [beneficiaryName, setBeneficiaryName] = useState('');
-    const [savingSettings, setSavingSettings] = useState(false);
+    const [savingSettings] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [searchResults, setSearchResults] = useState<any[]>([]);
 
