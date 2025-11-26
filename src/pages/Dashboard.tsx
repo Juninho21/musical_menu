@@ -230,6 +230,10 @@ export default function Dashboard() {
         }
     };
 
+    const [pixValues, setPixValues] = useState<[number, number, number]>([10, 20, 30]);
+
+    // ... (existing code)
+
     const fetchUserSettings = async (userId: string) => {
         try {
             const docRef = doc(db, 'users', userId);
@@ -239,6 +243,9 @@ export default function Dashboard() {
                 setPixKey(data.pixKey || '');
                 setBeneficiaryName(data.beneficiaryName || '');
                 setMercadopagoAccessToken(data.mercadopagoAccessToken || '');
+                if (data.pixValues && Array.isArray(data.pixValues) && data.pixValues.length === 3) {
+                    setPixValues(data.pixValues as [number, number, number]);
+                }
             } else {
                 // Create document if it doesn't exist
                 await setDoc(docRef, {
@@ -260,6 +267,7 @@ export default function Dashboard() {
                 pixKey,
                 beneficiaryName,
                 mercadopagoAccessToken,
+                pixValues,
                 updatedAt: new Date().toISOString()
             }, { merge: true });
             alert("Configurações salvas com sucesso!");
@@ -270,6 +278,8 @@ export default function Dashboard() {
             setSavingSettings(false);
         }
     };
+
+
 
     const handleDeleteSong = async (songId: string) => {
         if (!selectedPlaylist || !window.confirm("Tem certeza que deseja remover esta música?")) return;
@@ -964,6 +974,31 @@ export default function Dashboard() {
                                                 onChange={(e) => setBeneficiaryName(e.target.value)}
                                             />
                                         </div>
+                                    </div>
+                                </div>
+
+                                <div className="border-t border-gray-100 pt-4">
+                                    <h3 className="font-semibold text-gray-800 mb-4">Valores Sugeridos (PIX)</h3>
+                                    <div className="grid grid-cols-3 gap-4">
+                                        {[0, 1, 2].map((index) => (
+                                            <div key={index}>
+                                                <label className="block text-sm font-medium mb-1 text-text-muted">Opção {index + 1}</label>
+                                                <div className="relative">
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                                                    <input
+                                                        type="number"
+                                                        className="input"
+                                                        style={{ paddingLeft: '40px' }}
+                                                        value={pixValues[index]}
+                                                        onChange={(e) => {
+                                                            const newValues = [...pixValues] as [number, number, number];
+                                                            newValues[index] = parseFloat(e.target.value) || 0;
+                                                            setPixValues(newValues);
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
 

@@ -283,7 +283,7 @@ export default function PublicTipPage() {
                             </div>
 
                             <div className="grid grid-cols-3 gap-3">
-                                {[10, 20, 30].map((amount) => (
+                                {(artist?.pixValues || [10, 20, 30]).map((amount: number) => (
                                     <button
                                         key={amount}
                                         onClick={() => handleAmountSelect(amount)}
