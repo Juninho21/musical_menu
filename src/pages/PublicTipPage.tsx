@@ -27,6 +27,13 @@ export default function PublicTipPage() {
 
     const [paymentId, setPaymentId] = useState<string | null>(null);
     const [isAutomaticPayment, setIsAutomaticPayment] = useState(false);
+    const [copied, setCopied] = useState(false);
+
+    const handleCopyPix = () => {
+        navigator.clipboard.writeText(pixPayload);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
 
     useEffect(() => {
         if (artistId) {
@@ -311,12 +318,18 @@ export default function PublicTipPage() {
                                                 className="input text-xs flex-1"
                                             />
                                             <button
-                                                onClick={() => navigator.clipboard.writeText(pixPayload)}
-                                                className="btn btn-outline p-2"
+                                                onClick={handleCopyPix}
+                                                className={`btn p-2 transition-all ${copied ? 'bg-green-500 border-green-500 text-white' : 'btn-outline'}`}
+                                                title="Copiar código PIX"
                                             >
-                                                <Copy size={16} />
+                                                {copied ? <Check size={16} /> : <Copy size={16} />}
                                             </button>
                                         </div>
+                                        {copied && (
+                                            <p className="text-xs text-green-600 mt-1 font-medium animate-in fade-in slide-in-from-top-1">
+                                                Código copiado!
+                                            </p>
+                                        )}
                                     </div>
 
                                     {isAutomaticPayment ? (
