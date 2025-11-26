@@ -1014,12 +1014,18 @@ export default function Dashboard() {
                                             value={mercadopagoAccessToken}
                                             onChange={(e) => setMercadopagoAccessToken(e.target.value)}
                                         />
-                                        <p className="text-xs text-gray-400 mt-1">
+                                        <p className="text-xs text-gray-400 mt-1 mb-2">
                                             Necessário para confirmação automática de pagamentos.
-                                            <a href="https://www.mercadopago.com.br/developers/panel" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline ml-1">
-                                                Obter Access Token
-                                            </a>
                                         </p>
+                                        <a
+                                            href="https://www.mercadopago.com.br/developers/panel"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="btn btn-outline w-full text-sm py-2 flex items-center justify-center gap-2"
+                                        >
+                                            <ExternalLink size={16} />
+                                            Obter Access Token
+                                        </a>
                                     </div>
                                 </div>
 
