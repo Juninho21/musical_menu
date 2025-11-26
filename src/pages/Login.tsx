@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../lib/firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
 import { useNavigate } from 'react-router-dom';
 import { Music, ArrowRight } from 'lucide-react';
 
 export default function Login() {
+    const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -16,7 +18,21 @@ export default function Login() {
         setError('');
         try {
             if (isSignUp) {
-                await createUserWithEmailAndPassword(auth, email, password);
+                if (!name.trim()) {
+                    setError('Por favor, digite seu nome.');
+                    return;
+                }
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                await updateProfile(userCredential.user, {
+                    displayName: name
+                });
+
+                // Create user document in Firestore
+                await setDoc(doc(db, 'users', userCredential.user.uid), {
+                    displayName: name,
+                    email: email,
+                    createdAt: new Date().toISOString()
+                });
             } else {
                 await signInWithEmailAndPassword(auth, email, password);
             }
@@ -51,6 +67,20 @@ export default function Login() {
                 </div>
 
                 <form onSubmit={handleAuth} className="space-y-4">
+                    {isSignUp && (
+                        <div>
+                            <label className="block text-sm font-medium mb-1 text-text-muted">Nome</label>
+                            <input
+                                type="text"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                className="input"
+                                placeholder="Seu Nome"
+                                required
+                            />
+                        </div>
+                    )}
+
                     <div>
                         <label className="block text-sm font-medium mb-1 text-text-muted">Email</label>
                         <input
