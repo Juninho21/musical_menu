@@ -3,7 +3,6 @@ import { useSearchParams } from 'react-router-dom';
 import { doc, getDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import QRCode from 'react-qr-code';
-import { Pix } from '../lib/pix';
 import { Check, Copy, ListMusic, Music, ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function PublicTipPage() {
@@ -26,7 +25,6 @@ export default function PublicTipPage() {
     const [expandedPlaylist, setExpandedPlaylist] = useState<string | null>(null);
 
     const [paymentId, setPaymentId] = useState<string | null>(null);
-    const [isAutomaticPayment, setIsAutomaticPayment] = useState(false);
     const [copied, setCopied] = useState(false);
 
     const handleCopyPix = () => {
@@ -107,8 +105,6 @@ export default function PublicTipPage() {
     const generatePix = async (amount: number) => {
         setPaymentId(null);
         if (artist?.mercadopagoAccessToken) {
-            // Automatic Mode
-            setIsAutomaticPayment(true);
             try {
                 // Generate a unique email to avoid "payer email" validation errors in production
                 const uniqueEmail = `payment_${Date.now()}@musicalmenu.com`;
@@ -138,34 +134,15 @@ export default function PublicTipPage() {
                 } else {
                     console.error("Mercado Pago Error:", data);
                     const errorMessage = data.message || data.error || "Verifique o Access Token";
-                    alert(`Erro no Mercado Pago: ${errorMessage}. Usando modo manual.`);
-                    fallbackGeneratePix(amount);
+                    alert(`Erro no Mercado Pago: ${errorMessage}.`);
                 }
             } catch (error) {
                 console.error("Error creating payment:", error);
-                alert("Erro de conexão com Mercado Pago. Usando modo manual.");
-                fallbackGeneratePix(amount);
+                alert("Erro de conexão com Mercado Pago.");
             }
         } else {
-            fallbackGeneratePix(amount);
+            alert("O artista ainda não configurou o Mercado Pago para receber pagamentos.");
         }
-    };
-
-    const fallbackGeneratePix = (amount: number) => {
-        setIsAutomaticPayment(false);
-        if (!artist?.pixKey || !artist?.beneficiaryName) {
-            alert("O artista ainda não configurou os dados para recebimento via PIX.");
-            return;
-        }
-        const pix = new Pix(
-            artist.pixKey,
-            artist.beneficiaryName,
-            'Cidade', // Default city
-            '***',
-            'Gorjeta Musical',
-            amount.toFixed(2)
-        );
-        setPixPayload(pix.getPayload());
     };
 
     const handleFormSubmit = (e: React.FormEvent) => {
@@ -332,19 +309,10 @@ export default function PublicTipPage() {
                                         )}
                                     </div>
 
-                                    {isAutomaticPayment ? (
-                                        <div className="flex items-center justify-center gap-2 text-primary font-medium animate-pulse">
-                                            <div className="w-2 h-2 bg-primary rounded-full animate-bounce" />
-                                            Aguardando confirmação do pagamento...
-                                        </div>
-                                    ) : (
-                                        <button
-                                            onClick={handleFinalizeOrder}
-                                            className="btn btn-primary w-full"
-                                        >
-                                            Já fiz o Pix, enviar pedido
-                                        </button>
-                                    )}
+                                    <div className="flex items-center justify-center gap-2 text-primary font-medium animate-pulse">
+                                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce" />
+                                        Aguardando confirmação do pagamento...
+                                    </div>
                                 </div>
                             )}
 
