@@ -476,7 +476,7 @@ export default function Dashboard() {
                             >
                                 <button
                                     onClick={(e) => handleDeletePlaylist(playlist.id, e)}
-                                    className="absolute top-2 right-2 p-2 bg-white/80 backdrop-blur-sm rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all z-10"
+                                    className="absolute top-2 right-2 p-2 bg-white/80 backdrop-blur-sm rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all z-10"
                                     title="Excluir playlist"
                                 >
                                     <Trash2 size={16} />
@@ -578,7 +578,7 @@ export default function Dashboard() {
                                             </div>
                                             <button
                                                 onClick={() => handleDeleteSong(song.id)}
-                                                className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all opacity-0 group-hover:opacity-100"
+                                                className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
                                                 title="Remover música"
                                             >
                                                 <Trash2 size={18} />
