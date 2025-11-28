@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { doc, getDoc, collection, addDoc, query, where, getDocs, setDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import QRCode from 'react-qr-code';
 import { Check, Copy, ListMusic, Music, ChevronDown, ChevronUp } from 'lucide-react';
