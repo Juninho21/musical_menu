@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { onAuthStateChanged, signOut, deleteUser } from 'firebase/auth';
 import { collection, addDoc, query, where, getDocs, doc, deleteDoc, updateDoc, increment, arrayUnion, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
-import { ListMusic, Music, QrCode, Settings, Trash2, ArrowRight, Plus, Check, Copy, ExternalLink } from 'lucide-react';
+import { ListMusic, Music, QrCode, Settings, Trash2, ArrowRight, Plus, Check, Copy, ExternalLink, Download } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import clsx from 'clsx';
 
@@ -418,8 +418,39 @@ export default function Dashboard() {
         }
     }, [selectedPlaylist]);
 
+    const [isSoundEnabled, setIsSoundEnabled] = useState(true);
+    const prevConfirmedCount = React.useRef(0);
+    const isFirstLoad = React.useRef(true);
+
+    const playNotificationSound = () => {
+        if (!isSoundEnabled) return;
+        try {
+            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(500, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(1000, ctx.currentTime + 0.1);
+
+            gain.gain.setValueAtTime(0.1, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+
+            osc.start();
+            osc.stop(ctx.currentTime + 0.5);
+        } catch (e) {
+            console.error("Audio play failed", e);
+        }
+    };
+
     useEffect(() => {
         if (!user) return;
+
+        // Reset first load on user change
+        isFirstLoad.current = true;
 
         const q = query(
             collection(db, 'requests'),
@@ -428,13 +459,27 @@ export default function Dashboard() {
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const newRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            // Sort in memory to avoid index requirement issues
+            // Sort in memory
             newRequests.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
             setRequests(newRequests);
+
+            // Check for new confirmed requests
+            const confirmedCount = newRequests.filter((r: any) => r.status === 'confirmed').length;
+
+            if (!isFirstLoad.current && confirmedCount > prevConfirmedCount.current) {
+                playNotificationSound();
+            }
+
+            prevConfirmedCount.current = confirmedCount;
+            if (isFirstLoad.current) isFirstLoad.current = false;
+
+        }, (error) => {
+            console.error("Error in snapshot listener:", error);
         });
 
         return () => unsubscribe();
-    }, [user]);
+    }, [user, isSoundEnabled]);
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
@@ -597,8 +642,21 @@ export default function Dashboard() {
                             {/* Pending Requests */}
                             <div>
                                 <div className="flex items-center justify-between mb-4">
-                                    <h2 className="text-xl font-semibold text-gray-800">Últimos Pedidos</h2>
+                                    <div className="flex items-center gap-3">
+                                        <h2 className="text-xl font-semibold text-gray-800">Últimos Pedidos</h2>
+                                        <span className="flex items-center gap-1.5 px-2 py-1 bg-red-100 text-red-600 text-xs font-bold rounded-full animate-pulse">
+                                            <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                                            AO VIVO
+                                        </span>
+                                    </div>
                                     <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setIsSoundEnabled(!isSoundEnabled)}
+                                            className={`p-2 rounded-full transition-colors ${isSoundEnabled ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-400'}`}
+                                            title={isSoundEnabled ? "Som ativado" : "Som desativado"}
+                                        >
+                                            {isSoundEnabled ? <Music size={16} /> : <div className="relative"><Music size={16} /><div className="absolute inset-0 border-t border-gray-400 rotate-45 top-1/2"></div></div>}
+                                        </button>
                                         <button onClick={handleSimulateRequest} className="px-3 py-1 text-sm rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
                                             + Simular Pedido
                                         </button>
@@ -732,8 +790,38 @@ export default function Dashboard() {
                                 </p>
 
                                 <div className="w-48 h-48 bg-white mx-auto mb-4 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-200 p-2">
-                                    <QRCode value={`${window.location.origin}/tip?artistId=${user?.uid}`} size={160} />
+                                    <div id="printable-qrcode">
+                                        <QRCode value={`${window.location.origin}/tip?artistId=${user?.uid}`} size={160} />
+                                    </div>
                                 </div>
+
+                                <button
+                                    onClick={() => {
+                                        const svg = document.getElementById("printable-qrcode")?.querySelector("svg");
+                                        if (svg) {
+                                            const svgData = new XMLSerializer().serializeToString(svg);
+                                            const canvas = document.createElement("canvas");
+                                            const ctx = canvas.getContext("2d");
+                                            const img = new Image();
+                                            img.onload = () => {
+                                                const size = 1000; // High resolution for printing
+                                                canvas.width = size;
+                                                canvas.height = size;
+                                                ctx?.drawImage(img, 0, 0, size, size);
+                                                const pngFile = canvas.toDataURL("image/png");
+                                                const downloadLink = document.createElement("a");
+                                                downloadLink.download = "musical-menu-qrcode.png";
+                                                downloadLink.href = pngFile;
+                                                downloadLink.click();
+                                            };
+                                            img.src = "data:image/svg+xml;base64," + btoa(svgData);
+                                        }
+                                    }}
+                                    className="mb-6 flex items-center gap-2 mx-auto text-primary hover:text-primary/80 font-medium transition-colors px-4 py-2 rounded-lg hover:bg-primary/5"
+                                >
+                                    <Download size={18} />
+                                    Baixar QR Code para Imprimir
+                                </button>
 
                                 <div className="flex items-center gap-2 max-w-md mx-auto bg-green-50 p-2 rounded-lg border border-green-100">
                                     <div className="flex-1 truncate text-xs text-green-800 font-mono px-2">

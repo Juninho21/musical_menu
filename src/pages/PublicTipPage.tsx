@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { doc, getDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, collection, addDoc, query, where, getDocs, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import QRCode from 'react-qr-code';
 import { Check, Copy, ListMusic, Music, ChevronDown, ChevronUp } from 'lucide-react';
@@ -152,16 +152,23 @@ export default function PublicTipPage() {
     };
 
     const handleFinalizeOrder = async () => {
-        if (!artistId) return;
+        if (!artistId || !paymentId) return;
 
         try {
-            await addDoc(collection(db, 'requests'), {
+            // Use paymentId as the document ID to prevent duplicates (idempotency)
+            const requestRef = doc(db, 'requests', paymentId.toString());
+
+            // Check if already exists to avoid overwriting or re-triggering logic if needed
+            // But setDoc with merge is safe.
+            await setDoc(requestRef, {
                 userId: artistId,
                 ...songRequest,
                 amount: selectedAmount || parseFloat(customAmount) || 0,
                 createdAt: new Date().toISOString(),
-                status: 'confirmed'
-            });
+                status: 'confirmed',
+                paymentId: paymentId // Store paymentId for reference
+            }, { merge: true });
+
             setStep(3); // Success step
         } catch (error) {
             console.error("Error submitting request:", error);
