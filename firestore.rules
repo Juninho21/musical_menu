@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // --- Public Tip Page Rules ---
+
+    // Allow public read of user profiles (for artist info)
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Allow public read of playlists and songs
+    match /playlists/{playlistId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      
+      match /songs/{songId} {
+        allow read: if true;
+        allow write: if isAuthenticated();
+      }
+    }
+
+    // Allow public creation of requests (tips)
+    match /requests/{requestId} {
+      allow create: if true;
+      allow read, update, delete: if isAuthenticated();
+    }
+
+    // --- Admin / Existing Rules Preservation ---
+
+    match /companies/{companyId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    match /service_order_pdfs/{pdfId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    match /subscription_plans/{planId} {
+      allow read, write: if true;
+    }
+
+    match /system_config/{configId} {
+      allow read, write: if true;
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
