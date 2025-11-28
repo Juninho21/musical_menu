@@ -22,6 +22,11 @@ export default function Dashboard() {
     const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
     const [isAddingSong, setIsAddingSong] = useState(false);
     const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+    const [showSuccessToast, setShowSuccessToast] = useState(false);
+    const [successToastMessage, setSuccessToastMessage] = useState('');
+    const [showNewRequestToast, setShowNewRequestToast] = useState(false);
+    const [showDeletePlaylistModal, setShowDeletePlaylistModal] = useState(false);
+    const [playlistToDelete, setPlaylistToDelete] = useState<string | null>(null);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -147,7 +152,7 @@ export default function Dashboard() {
             setNewSongArtist('');
             setNewSongCover('');
             setShowAddSongModal(false);
-            alert('Música adicionada com sucesso!');
+
         } catch (error: any) {
             console.error("Error adding song:", error);
             if (error.code === 'unavailable' || error.message?.includes('offline')) {
@@ -169,17 +174,26 @@ export default function Dashboard() {
         setSelectedPlaylist(playlist);
     };
 
-    const handleDeletePlaylist = async (playlistId: string, e: React.MouseEvent) => {
+    const handleDeletePlaylist = (playlistId: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!window.confirm("Tem certeza que deseja excluir esta playlist?")) return;
+        setPlaylistToDelete(playlistId);
+        setShowDeletePlaylistModal(true);
+    };
+
+    const confirmDeletePlaylist = async () => {
+        if (!playlistToDelete) return;
 
         try {
-            await deleteDoc(doc(db, 'playlists', playlistId));
-            setPlaylists(prev => prev.filter(p => p.id !== playlistId));
-            if (selectedPlaylist?.id === playlistId) {
+            await deleteDoc(doc(db, 'playlists', playlistToDelete));
+            setPlaylists(prev => prev.filter(p => p.id !== playlistToDelete));
+            if (selectedPlaylist?.id === playlistToDelete) {
                 setSelectedPlaylist(null);
             }
-            alert("Playlist excluída com sucesso!");
+            setShowDeletePlaylistModal(false);
+            setPlaylistToDelete(null);
+            setSuccessToastMessage("Playlist excluída com sucesso!");
+            setShowSuccessToast(true);
+            setTimeout(() => setShowSuccessToast(false), 3000);
         } catch (error) {
             console.error("Error deleting playlist:", error);
             alert("Erro ao excluir playlist.");
@@ -264,7 +278,9 @@ export default function Dashboard() {
                 pixValues,
                 updatedAt: new Date().toISOString()
             }, { merge: true });
-            alert("Configurações salvas com sucesso!");
+            setSuccessToastMessage("Configurações salvas com sucesso!");
+            setShowSuccessToast(true);
+            setTimeout(() => setShowSuccessToast(false), 3000);
         } catch (error) {
             console.error("Error saving settings:", error);
             alert("Erro ao salvar configurações.");
@@ -328,7 +344,7 @@ export default function Dashboard() {
     };
 
     const handleDeleteSong = async (songId: string) => {
-        if (!selectedPlaylist || !window.confirm("Tem certeza que deseja remover esta música?")) return;
+        if (!selectedPlaylist) return;
 
         try {
             await deleteDoc(doc(db, 'playlists', selectedPlaylist.id, 'songs', songId));
@@ -357,7 +373,9 @@ export default function Dashboard() {
                 songs: Math.max(0, (prev.songs || 0) - 1)
             }));
 
-            alert("Música removida com sucesso!");
+            setSuccessToastMessage("Música removida com sucesso!");
+            setShowSuccessToast(true);
+            setTimeout(() => setShowSuccessToast(false), 3000);
         } catch (error) {
             console.error("Error deleting song:", error);
             alert("Erro ao remover música.");
@@ -469,6 +487,8 @@ export default function Dashboard() {
 
             if (!isFirstLoad.current && confirmedCount > prevConfirmedCount.current) {
                 playNotificationSound();
+                setShowNewRequestToast(true);
+                setTimeout(() => setShowNewRequestToast(false), 5000);
             }
 
             prevConfirmedCount.current = confirmedCount;
@@ -480,6 +500,45 @@ export default function Dashboard() {
 
         return () => unsubscribe();
     }, [user, isSoundEnabled]);
+
+    // Cleanup old completed requests (older than 30 days)
+    useEffect(() => {
+        if (!user) return;
+
+        const cleanupOldRequests = async () => {
+            try {
+                const thirtyDaysAgo = new Date();
+                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+                const q = query(
+                    collection(db, 'requests'),
+                    where('userId', '==', user.uid),
+                    where('status', '==', 'completed')
+                );
+
+                const snapshot = await getDocs(q);
+                const deletePromises: any[] = [];
+
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const completedAt = data.completedAt ? new Date(data.completedAt) : (data.createdAt ? new Date(data.createdAt) : null);
+
+                    if (completedAt && completedAt < thirtyDaysAgo) {
+                        deletePromises.push(deleteDoc(doc.ref));
+                    }
+                });
+
+                if (deletePromises.length > 0) {
+                    await Promise.all(deletePromises);
+                    console.log(`Cleaned up ${deletePromises.length} old requests.`);
+                }
+            } catch (error) {
+                console.error("Error cleaning up old requests:", error);
+            }
+        };
+
+        cleanupOldRequests();
+    }, [user]);
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
@@ -908,7 +967,7 @@ export default function Dashboard() {
                                             <input
                                                 type="text"
                                                 placeholder="Digite o nome da música ou artista..."
-                                                className="input pl-10"
+                                                className="input !pl-12"
                                                 value={searchTerm}
                                                 onChange={(e) => {
                                                     setSearchTerm(e.target.value);
@@ -1152,6 +1211,39 @@ export default function Dashboard() {
                     </div>
                 )
             }
+
+            {/* Delete Playlist Modal */}
+            {
+                showDeletePlaylistModal && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-in fade-in">
+                        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                            <div className="p-6">
+                                <h3 className="text-xl font-bold text-gray-800 mb-2">Excluir Playlist</h3>
+                                <p className="text-gray-600">
+                                    Tem certeza que deseja excluir esta playlist? Esta ação não pode ser desfeita.
+                                </p>
+                                <div className="flex gap-3 mt-6 justify-end">
+                                    <button
+                                        onClick={() => {
+                                            setShowDeletePlaylistModal(false);
+                                            setPlaylistToDelete(null);
+                                        }}
+                                        className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors font-medium"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={confirmDeletePlaylist}
+                                        className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium shadow-sm shadow-red-200"
+                                    >
+                                        Sim, excluir
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
             {/* Delete Account Modal */}
             {showDeleteAccountModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-in fade-in">
@@ -1185,6 +1277,28 @@ export default function Dashboard() {
                                 </button>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+            {/* Success Toast */}
+            {showSuccessToast && (
+                <div className="fixed bottom-24 md:bottom-10 right-4 md:right-10 bg-emerald-600 text-white px-6 py-4 rounded-xl shadow-xl flex items-center gap-3 animate-in slide-in-from-bottom-5 fade-in duration-300 z-[100] border border-emerald-500/50">
+                    <div className="bg-white/20 p-1.5 rounded-full">
+                        <Check size={20} strokeWidth={3} />
+                    </div>
+                    <span className="font-semibold">{successToastMessage}</span>
+                </div>
+            )}
+
+            {/* New Request Toast */}
+            {showNewRequestToast && (
+                <div className="fixed bottom-24 md:bottom-10 right-4 md:right-10 bg-blue-600 text-white px-6 py-4 rounded-xl shadow-xl flex items-center gap-3 animate-in slide-in-from-bottom-5 fade-in duration-300 z-[100] border border-blue-500/50">
+                    <div className="bg-white/20 p-1.5 rounded-full">
+                        <Music size={20} strokeWidth={3} />
+                    </div>
+                    <div>
+                        <p className="font-bold">Novo Pedido!</p>
+                        <p className="text-xs text-blue-100">Um novo pedido de música chegou.</p>
                     </div>
                 </div>
             )}
