@@ -1,5 +1,23 @@
 {
     "firestore": {
         "rules": "firestore.rules"
+    },
+    "hosting": {
+        "public": "dist",
+        "ignore": [
+            "firebase.json",
+            "**/.*",
+            "**/node_modules/**"
+        ],
+        "rewrites": [
+            {
+                "source": "/api/mercadopago/**",
+                "destination": "https://api.mercadopago.com/:path*"
+            },
+            {
+                "source": "**",
+                "destination": "/index.html"
+            }
+        ]
     }
 }

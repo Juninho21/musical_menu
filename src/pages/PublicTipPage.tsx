@@ -92,7 +92,8 @@ export default function PublicTipPage() {
                 const songs = songsSnapshot.docs.map(s => ({ id: s.id, ...s.data() }));
                 return { ...playlistData, songsList: songs };
             }));
-            setPlaylists(fetchedPlaylists);
+            // Filter inactive playlists (isActive !== false to handle legacy data)
+            setPlaylists(fetchedPlaylists.filter((p: any) => p.isActive !== false));
         } catch (error) {
             console.error("Error fetching playlists:", error);
         }

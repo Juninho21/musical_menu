@@ -4,7 +4,7 @@ import { onAuthStateChanged, signOut, deleteUser } from 'firebase/auth';
 import { collection, addDoc, query, where, getDocs, doc, deleteDoc, updateDoc, increment, arrayUnion, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { compressImage } from '../lib/utils';
-import { ListMusic, Music, QrCode, Settings, Trash2, ArrowRight, Plus, Check, Copy, ExternalLink, Download, Camera } from 'lucide-react';
+import { ListMusic, Music, QrCode, Settings, Trash2, ArrowRight, Plus, Check, Copy, ExternalLink, Download, Camera, Eye, EyeOff } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import clsx from 'clsx';
 
@@ -83,6 +83,7 @@ export default function Dashboard() {
                 name: newPlaylistName,
                 userId: user.uid,
                 songs: 0,
+                isActive: true,
                 createdAt: new Date().toISOString()
             };
 
@@ -198,6 +199,26 @@ export default function Dashboard() {
         } catch (error) {
             console.error("Error deleting playlist:", error);
             alert("Erro ao excluir playlist.");
+        }
+    };
+
+    const togglePlaylistStatus = async (playlistId: string, currentStatus: boolean, e: React.MouseEvent) => {
+        e.stopPropagation();
+        try {
+            const playlistRef = doc(db, 'playlists', playlistId);
+            await updateDoc(playlistRef, {
+                isActive: !currentStatus
+            });
+
+            setPlaylists(prev => prev.map(p => {
+                if (p.id === playlistId) {
+                    return { ...p, isActive: !currentStatus };
+                }
+                return p;
+            }));
+        } catch (error) {
+            console.error("Error toggling playlist status:", error);
+            alert("Erro ao alterar status da playlist.");
         }
     };
 
@@ -592,6 +613,16 @@ export default function Dashboard() {
                                     title="Excluir playlist"
                                 >
                                     <Trash2 size={16} />
+                                </button>
+                                <button
+                                    onClick={(e) => togglePlaylistStatus(playlist.id, playlist.isActive !== false, e)}
+                                    className={`absolute top-2 left-2 p-2 backdrop-blur-sm rounded-full transition-all z-10 ${playlist.isActive !== false
+                                            ? 'bg-green-500/80 text-white hover:bg-green-600'
+                                            : 'bg-gray-500/80 text-white hover:bg-gray-600'
+                                        }`}
+                                    title={playlist.isActive !== false ? "Playlist visível (Clique para ocultar)" : "Playlist oculta (Clique para mostrar)"}
+                                >
+                                    {playlist.isActive !== false ? <Eye size={16} /> : <EyeOff size={16} />}
                                 </button>
                                 <div className="aspect-square w-full bg-gray-100 relative border-b border-gray-100">
                                     {playlist.covers && playlist.covers.length >= 4 ? (
