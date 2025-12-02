@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { onAuthStateChanged, signOut, deleteUser } from 'firebase/auth';
 import { collection, addDoc, query, where, getDocs, doc, deleteDoc, updateDoc, increment, arrayUnion, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
-import { ListMusic, Music, QrCode, Settings, Trash2, ArrowRight, Plus, Check, Copy, ExternalLink, Download } from 'lucide-react';
+import { compressImage } from '../lib/utils';
+import { ListMusic, Music, QrCode, Settings, Trash2, ArrowRight, Plus, Check, Copy, ExternalLink, Download, Camera } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import clsx from 'clsx';
 
@@ -210,6 +211,9 @@ export default function Dashboard() {
 
 
     const [mercadopagoAccessToken, setMercadopagoAccessToken] = useState('');
+    const [publicName, setPublicName] = useState('');
+    const [publicPhotoUrl, setPublicPhotoUrl] = useState('');
+    const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
     const searchMusic = async (term: string) => {
         if (!term.trim()) return;
@@ -253,6 +257,8 @@ export default function Dashboard() {
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 setMercadopagoAccessToken(data.mercadopagoAccessToken || '');
+                setPublicName(data.publicName || data.displayName || '');
+                setPublicPhotoUrl(data.photoUrl || '');
                 if (data.pixValues && Array.isArray(data.pixValues) && data.pixValues.length === 3) {
                     setPixValues(data.pixValues as [number, number, number]);
                 }
@@ -276,6 +282,8 @@ export default function Dashboard() {
             await setDoc(userRef, {
                 mercadopagoAccessToken,
                 pixValues,
+                publicName,
+                photoUrl: publicPhotoUrl,
                 updatedAt: new Date().toISOString()
             }, { merge: true });
             setSuccessToastMessage("Configurações salvas com sucesso!");
@@ -847,6 +855,78 @@ export default function Dashboard() {
                                 <p className="text-text-muted mb-6">
                                     Compartilhe este QR Code para seus clientes fazerem pedidos e enviarem gorjetas.
                                 </p>
+
+                                <div className="mb-8 p-4 bg-gray-50 rounded-xl border border-gray-100 text-left">
+                                    <h3 className="font-semibold text-gray-800 mb-4">Personalizar Página de Pedidos</h3>
+
+                                    <div className="flex flex-col md:flex-row gap-6 items-start">
+                                        <div className="flex flex-col items-center gap-2">
+                                            <div className="relative w-24 h-24 bg-white rounded-full overflow-hidden border-2 border-dashed border-gray-300 flex-shrink-0 group">
+                                                {publicPhotoUrl ? (
+                                                    <img src={publicPhotoUrl} alt="Perfil" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                                        <Camera size={32} />
+                                                    </div>
+                                                )}
+                                                <label className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                                                    <span className="text-white text-xs font-medium">Alterar</span>
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        className="hidden"
+                                                        onChange={async (e) => {
+                                                            if (e.target.files && e.target.files[0]) {
+                                                                setUploadingPhoto(true);
+                                                                try {
+                                                                    const file = e.target.files[0];
+                                                                    const base64 = await compressImage(file);
+                                                                    setPublicPhotoUrl(base64);
+                                                                    // Auto-save photo
+                                                                    await setDoc(doc(db, 'users', user.uid), { photoUrl: base64 }, { merge: true });
+                                                                } catch (error) {
+                                                                    console.error("Error uploading photo:", error);
+                                                                    alert("Erro ao processar foto.");
+                                                                } finally {
+                                                                    setUploadingPhoto(false);
+                                                                }
+                                                            }
+                                                        }}
+                                                    />
+                                                </label>
+                                                {uploadingPhoto && (
+                                                    <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                                                        <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <span className="text-xs text-gray-500">Foto do Perfil</span>
+                                        </div>
+
+                                        <div className="flex-1 w-full space-y-3">
+                                            <div>
+                                                <label className="block text-sm font-medium mb-1 text-gray-600">Nome de Exibição</label>
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="text"
+                                                        className="input"
+                                                        placeholder="Nome do Artista ou Banda"
+                                                        value={publicName}
+                                                        onChange={(e) => setPublicName(e.target.value)}
+                                                    />
+                                                    <button
+                                                        onClick={handleSaveSettings}
+                                                        disabled={savingSettings}
+                                                        className="btn btn-primary whitespace-nowrap"
+                                                    >
+                                                        {savingSettings ? 'Salvar' : 'Salvar Nome'}
+                                                    </button>
+                                                </div>
+                                                <p className="text-xs text-gray-400 mt-1">Este nome aparecerá para os clientes.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
 
                                 <div className="w-48 h-48 bg-white mx-auto mb-4 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-200 p-2">
                                     <div id="printable-qrcode">

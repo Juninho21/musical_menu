@@ -1,6 +1,7 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { initializeFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
     apiKey: "AIzaSyAS2RR7kBJu8PUu4VpTKd1QRcKi2MdRhYA",
@@ -11,6 +12,8 @@ const firebaseConfig = {
     appId: "1:42023414770:web:5d5ce002ccc28b08df996b"
 };
 
+
+
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 
 // Initialize Firestore with experimentalForceLongPolling to try and bypass browser blocks
@@ -19,5 +22,6 @@ const db = initializeFirestore(app, {
 });
 
 const auth = getAuth(app);
+const storage = getStorage(app);
 
-export { app, db, auth };
+export { app, db, auth, storage };

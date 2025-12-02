@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, getDocs, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { compressImage } from '../lib/utils';
 import QRCode from 'react-qr-code';
-import { Check, Copy, ListMusic, Music, ChevronDown, ChevronUp } from 'lucide-react';
+import { Check, Copy, ListMusic, Music, ChevronDown, ChevronUp, Camera } from 'lucide-react';
 
 export default function PublicTipPage() {
     const [searchParams] = useSearchParams();
@@ -20,6 +21,7 @@ export default function PublicTipPage() {
         userName: '',
         message: ''
     });
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [pixPayload, setPixPayload] = useState('');
     const [playlists, setPlaylists] = useState<any[]>([]);
     const [expandedPlaylist, setExpandedPlaylist] = useState<string | null>(null);
@@ -145,6 +147,20 @@ export default function PublicTipPage() {
         }
     };
 
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            try {
+                const base64 = await compressImage(file);
+                setPreviewUrl(base64);
+                setSongRequest(prev => ({ ...prev, userPhoto: base64 }));
+            } catch (error) {
+                console.error("Error processing photo:", error);
+                alert("Erro ao processar foto.");
+            }
+        }
+    };
+
     const handleFormSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setStep(2); // Move to payment step
@@ -182,9 +198,18 @@ export default function PublicTipPage() {
     return (
         <div className="min-h-screen bg-gray-50 p-4">
             <div className="max-w-md mx-auto bg-white rounded-xl shadow-sm overflow-hidden">
-                <div className="p-6 border-b border-gray-100">
+                <div className="p-6 border-b border-gray-100 flex flex-col items-center">
+                    {artist.photoUrl ? (
+                        <div className="w-20 h-20 rounded-full overflow-hidden mb-3 border-2 border-white shadow-md">
+                            <img src={artist.photoUrl} alt={artist.publicName || artist.displayName} className="w-full h-full object-cover" />
+                        </div>
+                    ) : (
+                        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-3 text-primary">
+                            <Music size={32} />
+                        </div>
+                    )}
                     <h1 className="text-xl font-bold text-center text-gray-800">Pedir Música</h1>
-                    <p className="text-center text-sm text-gray-500 mt-1">para {artist.displayName || 'o Artista'}</p>
+                    <p className="text-center text-sm text-gray-500 mt-1">para {artist.publicName || artist.displayName || 'o Artista'}</p>
                 </div>
 
                 <div className="p-6">
@@ -243,6 +268,26 @@ export default function PublicTipPage() {
                                             value={songRequest.userName}
                                             onChange={e => setSongRequest({ ...songRequest, userName: e.target.value })}
                                         />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Sua foto (opcional)</label>
+                                        <div className="flex items-center gap-4">
+                                            <div className="relative w-16 h-16 bg-gray-100 rounded-full overflow-hidden border border-gray-200 flex-shrink-0">
+                                                {previewUrl ? (
+                                                    <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                                        <Camera size={24} />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handleFileChange}
+                                                className="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                                            />
+                                        </div>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium mb-1">Mensagem (opcional)</label>
